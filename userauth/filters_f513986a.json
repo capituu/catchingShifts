@@ -1,0 +1,37 @@
+{
+  "Monday": {
+    "enabled": true,
+    "start": 0,
+    "end": 24
+  },
+  "Tuesday": {
+    "enabled": true,
+    "start": 0,
+    "end": 24
+  },
+  "Wednesday": {
+    "enabled": true,
+    "start": 0,
+    "end": 24
+  },
+  "Thursday": {
+    "enabled": true,
+    "start": 0,
+    "end": 24
+  },
+  "Friday": {
+    "enabled": true,
+    "start": 0,
+    "end": 24
+  },
+  "Saturday": {
+    "enabled": true,
+    "start": 0,
+    "end": 24
+  },
+  "Sunday": {
+    "enabled": true,
+    "start": 0,
+    "end": 24
+  }
+}

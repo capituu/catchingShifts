@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Autenticação concluída</title>
+</head>
+<body>
+  <p>Login realizado com sucesso! Esta janela será fechada.</p>
+  <script>
+    // Recarrega a janela pai (index.html) para refletir que já há um usuário autenticado
+    if (window.opener) {
+      window.opener.location.reload();
+    }
+    // Fecha este popup
+    window.close();
+  </script>
+</body>
+</html>

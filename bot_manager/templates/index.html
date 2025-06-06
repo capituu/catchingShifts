@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gerenciador do Robô de Shifts</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 80px;
+      margin: 0;
+    }
+    h1 {
+      margin-bottom: 30px;
+      color: #333;
+    }
+    .toggle-button {
+      width: 200px;
+      height: 60px;
+      font-size: 24px;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      outline: none;
+      transition: background-color 0.3s;
+      margin-bottom: 20px;
+    }
+    .toggle-on {
+      background-color: #28a745;
+    }
+    .toggle-off {
+      background-color: #dc3545;
+    }
+    #status {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .nav-button {
+      width: 200px;
+      height: 50px;
+      font-size: 20px;
+      color: white;
+      background-color: #007bff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      outline: none;
+      transition: background-color 0.3s;
+      margin-bottom: 20px;
+    }
+    .nav-button:hover {
+      background-color: #0069d9;
+    }
+    .bottom-nav {
+      margin-top: 30px;
+      text-align: center;
+    }
+    .bottom-nav a {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #2563eb;
+      color: white;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 500;
+      margin: 0 8px;
+      transition: background-color 0.3s;
+    }
+    .bottom-nav a:hover {
+      background-color: #1e40af;
+    }
+  </style>
+</head>
+<body>
+  <h1>Robô de Shifts (SkipTheDishes)</h1>
+
+  <button id="toggleBtn" class="toggle-button toggle-off">OFF</button>
+  <div id="status">Status: Desligado</div>
+
+  <!-- Disparamos o fluxo de login OIDC via POST /connect -->
+  <button id="connectBtn" class="nav-button">Connect JE Account</button>
+  <button id="filtersBtn" class="nav-button">Filters</button>
+
+  <div class="bottom-nav">
+    <a href="{{ url_for('collected_shifts') }}">Collected Shifts</a>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // 1) Estado do bot
+      fetch("{{ url_for('state') }}")
+        .then(resp => resp.json())
+        .then(data => updateButton(data.running))
+        .catch(err => console.error("Erro ao obter estado:", err));
+    });
+
+    function updateButton(isOn) {
+      const btn = document.getElementById("toggleBtn");
+      const status = document.getElementById("status");
+      if (isOn) {
+        btn.textContent = "ON";
+        btn.classList.remove("toggle-off");
+        btn.classList.add("toggle-on");
+        status.textContent = "Status: Ligado (checando a cada 30–60 seg)";
+      } else {
+        btn.textContent = "OFF";
+        btn.classList.remove("toggle-on");
+        btn.classList.add("toggle-off");
+        status.textContent = "Status: Desligado";
+      }
+    }
+
+    // 2) Toggle ON/OFF do bot
+    document.getElementById("toggleBtn").addEventListener("click", () => {
+      fetch("{{ url_for('toggle') }}", { method: "POST" })
+        .then(resp => resp.json())
+        .then(data => updateButton(data.running))
+        .catch(err => console.error("Erro ao alternar estado:", err));
+    });
+
+    // 3) Connect JE Account: dispara auth_code_capture.py e polla /auth_status
+    document.getElementById("connectBtn").addEventListener("click", () => {
+      fetch("{{ url_for('connect') }}", { method: "POST" })
+        .then(() => {
+          // Poll a cada 1s até authenticated===true
+          const iv = setInterval(async () => {
+            try {
+              const resp = await fetch("{{ url_for('auth_status') }}");
+              const data = await resp.json();
+              if (data.authenticated) {
+                clearInterval(iv);
+                // Recarrega para refletir usuário autenticado
+                window.location.reload();
+              }
+            } catch (e) {
+              console.error("Erro ao verificar auth_status:", e);
+              clearInterval(iv);
+            }
+          }, 1000);
+        })
+        .catch(err => console.error("Erro ao iniciar login:", err));
+    });
+
+    // 4) Filters
+    document.getElementById("filtersBtn").addEventListener("click", () => {
+      window.location.href = "{{ url_for('filters') }}";
+    });
+  </script>
+</body>
+</html>

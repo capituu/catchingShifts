@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Filters - Robo de Shifts</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .day-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      position: relative;
+      overflow: visible;
+    }
+    .day-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .day-row label {
+      font-weight: bold;
+      font-size: 16px;
+      color: #333;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 26px;
+    }
+    .toggle-switch input {
+      display: none;
+    }
+    .slider-toggle {
+      position: absolute;
+      cursor: pointer;
+      background-color: #ccc;
+      border-radius: 26px;
+      top: 0; left: 0; right: 0; bottom: 0;
+      transition: .4s;
+    }
+    .slider-toggle:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider-toggle {
+      background-color: #28a745;
+    }
+    input:checked + .slider-toggle:before {
+      transform: translateX(24px);
+    }
+
+    /* ============================================
+       CONTAINER DO SLIDER (altura exata: 20px)
+       ============================================ */
+    .slider-container {
+      position: relative;
+      width: calc(100% - 20px); /* deixa 10px de margem em cada lado interno do card */
+      margin: 12px auto 0;      /* espaçamento de 12px em relação ao label, e centralizado */
+      height: 20px;             /* altura TOTAL (exatamente igual ao thumb) */
+    }
+
+    /* =================================================
+       OS INPUT[type="range"] (dois thumbs sobrepostos)
+       ocupam 100% da largura e 20px de altura (mesma do container)
+       ================================================= */
+    .slider-container input[type="range"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 20px;   /* mesma altura do container */
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      -webkit-appearance: none;
+      appearance: none;
+      pointer-events: none; 
+      /* Tiramos pointer-events do <input> para a track, 
+         vamos habilitar só o thumb via thumb-selector (ver abaixo) */
+    }
+
+    /* ============= CAMADAS (z-index) ============= */
+    .range-start {
+      z-index: 2; /* valor inicial; trazido para frente ao clicar */
+    }
+    .range-end {
+      z-index: 1; /* valor inicial; trazido para frente ao clicar */
+    }
+
+    /* ================================
+       THUMB (WebKit: Chrome, Safari)
+       ================================ */
+    /* Para permitir apenas “mousedown” no próprio thumb, colocamos pointer-events: auto */
+    .slider-container input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #28a745;
+      border: 2px solid white;
+      border-radius: 50%;
+      cursor: pointer;
+      position: relative;
+      top: 0;                /* apoia o topo do thumb no container */
+      box-sizing: border-box;/* assegura que os “20px” incluam a borda de 2px */
+      box-shadow: 0 0 2px rgba(0,0,0,0.3);
+      transition: background-color 0.2s;
+      pointer-events: auto;  /* só o próprio thumb captura clique/drag */
+    }
+    .slider-container input[type="range"]::-webkit-slider-thumb:hover {
+      background-color: #1e7e34;
+    }
+
+    /* ================================
+       THUMB (Firefox)
+       ================================ */
+    .slider-container input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      background: #28a745;
+      border: 2px solid white;
+      border-radius: 50%;
+      cursor: pointer;
+      position: relative;
+      top: 0;
+      box-sizing: border-box;
+      box-shadow: 0 0 2px rgba(0,0,0,0.3);
+      transition: background-color 0.2s;
+      pointer-events: auto;
+    }
+    .slider-container input[type="range"]::-moz-range-thumb:hover {
+      background-color: #1e7e34;
+    }
+
+    /* ============================================
+       TRACK CINZA (linha de fundo, 4px de altura),
+       centralizada verticalmente no container de 20px:
+       ============================================ */
+    .slider-track {
+      position: absolute;
+      top: 50%;               /* meio do container de 20px (10px) */
+      left: 0;
+      right: 0;
+      height: 4px;            /* altura exata da linha */
+      background-color: #ddd;
+      border-radius: 4px;
+      z-index: 0;             /* fica abaixo dos thumbs */
+      transform: translateY(-50%); /* move para centralizar verticalmente */
+    }
+
+    /* ============================================
+       FAIXA VERDE (entre os thumbs),
+       também centralizada verticalmente:
+       ============================================ */
+    .slider-range {
+      position: absolute;
+      top: 50%;
+      height: 4px;
+      background-color: #28a745;
+      border-radius: 4px;
+      z-index: 0;
+      pointer-events: none;
+      transform: translateY(-50%);
+      left: 0;
+      width: 0; /* será ajustado via JS */
+    }
+
+    .time-range-label {
+      font-size: 14px;
+      color: #555;
+      margin-top: 4px;
+      text-align: center;
+    }
+
+    #saveBtn {
+      display: block;
+      margin: 30px auto;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    #saveBtn:hover {
+      background-color: #0069d9;
+    }
+  </style>
+</head>
+<body>
+  <h1>Filters</h1>
+  <p style="text-align:center; color:#555;">Selecione os dias e horários desejados</p>
+
+  <div id="daysContainer">
+    <!-- Os cards de cada dia serão inseridos dinamicamente via JavaScript abaixo -->
+  </div>
+
+  <button id="saveBtn">Salvar</button>
+
+  <script>
+    // ============================================================
+    // 1) Estados de “arraste” (drag) — habilitar alteração só se for drag do thumb
+    //    guardamos, para cada dia, dois flags: “start” e “end”.
+    // ============================================================
+    const draggingFlags = {};
+    const daysOfWeek = [
+      "Monday","Tuesday","Wednesday",
+      "Thursday","Friday","Saturday","Sunday"
+    ];
+    daysOfWeek.forEach(day => {
+      draggingFlags[day] = { start: false, end: false };
+    });
+
+    function formatHourLabel(value) {
+      const h = parseInt(value, 10);
+      if (h === 0)   return "00:00 AM";
+      if (h === 24)  return "12:00 PM";
+      const suffix = (h < 12) ? "AM" : "PM";
+      const hour12 = (h % 12 === 0) ? 12 : (h % 12);
+      const twoDigits = hour12 < 10 ? "0" + hour12 : "" + hour12;
+      return `${twoDigits}:00 ${suffix}`;
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const container = document.getElementById("daysContainer");
+
+      daysOfWeek.forEach(day => {
+        const card = document.createElement("div");
+        card.className = "day-card";
+        card.id = `card_${day}`;
+        card.innerHTML = `
+          <div class="day-row">
+            <label>${day}</label>
+            <label class="toggle-switch">
+              <input
+                type="checkbox"
+                id="chk_${day}"
+                onclick="toggleDay('${day}')"
+              >
+              <span class="slider-toggle"></span>
+            </label>
+          </div>
+          <div class="time-range-label" id="labelRange_${day}">
+            00:00 AM - 12:00 PM
+          </div>
+          <div class="slider-container" id="sliderContainer_${day}">
+            <div class="slider-track"></div>
+            <div class="slider-range" id="sliderRange_${day}"></div>
+            <!-- Note que:
+                 - desativamos pointer-events no próprio input,
+                   deixando apenas o thumb responsivo.
+                 - colocamos onmousedown e onmouseup nos thumbs para setar flags. -->
+            <input
+              type="range"
+              id="rangeStart_${day}"
+              class="range-start"
+              min="0" max="24" step="1"
+              value="0"
+              oninput="onRangeChange('${day}','start')"
+              onmousedown="startDrag('${day}','start')"
+              onmouseup="stopDrag('${day}','start')"
+            >
+            <input
+              type="range"
+              id="rangeEnd_${day}"
+              class="range-end"
+              min="0" max="24" step="1"
+              value="24"
+              oninput="onRangeChange('${day}','end')"
+              onmousedown="startDrag('${day}','end')"
+              onmouseup="stopDrag('${day}','end')"
+            >
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      // Também, quando o mouse soltar em qualquer parte da janela, limpamos todas as flags
+      document.addEventListener("mouseup", () => {
+        daysOfWeek.forEach(day => {
+          draggingFlags[day].start = false;
+          draggingFlags[day].end   = false;
+        });
+      });
+
+      initForm();
+    });
+
+    function initForm() {
+      daysOfWeek.forEach(day => {
+        const data = window.preSavedFilters?.[day] || { enabled: false, start: 0, end: 24 };
+
+        const chk = document.getElementById(`chk_${day}`);
+        chk.checked = !!data.enabled;
+
+        const rangeStart = document.getElementById(`rangeStart_${day}`);
+        const rangeEnd   = document.getElementById(`rangeEnd_${day}`);
+        const labelRange = document.getElementById(`labelRange_${day}`);
+
+        rangeStart.value = data.start;
+        rangeEnd.value   = data.end;
+
+        labelRange.textContent = `
+          ${formatHourLabel(data.start)} - ${formatHourLabel(data.end)}
+        `;
+        updateSliderRange(day);
+        toggleDay(day);
+      });
+    }
+
+    /* 
+      startDrag(day, which):
+        - chamado no onmousedown do thumb
+        - ajusta o z-index daquele thumb para 3, e z-index do outro para 2
+        - marca draggingFlags[day][which] = true
+    */
+    function startDrag(day, which) {
+      const rangeStart = document.getElementById(`rangeStart_${day}`);
+      const rangeEnd   = document.getElementById(`rangeEnd_${day}`);
+
+      if (which === "start") {
+        draggingFlags[day].start = true;
+        // traz “start” para frente
+        rangeStart.style.zIndex = 3;
+        rangeEnd  .style.zIndex = 2;
+      } else {
+        draggingFlags[day].end = true;
+        // traz “end” para frente
+        rangeEnd  .style.zIndex = 3;
+        rangeStart.style.zIndex = 2;
+      }
+    }
+
+    function stopDrag(day, which) {
+      // não precisa ajustar z-index aqui; o próximo mousedown cuidará disso
+      draggingFlags[day][which] = false;
+    }
+
+    /*
+      onRangeChange(day, which):
+        - só atualiza valor se draggingFlags[day][which] for true
+        - evita o “pulo” quando clicam no track
+    */
+    function onRangeChange(day, which) {
+      if (!draggingFlags[day][which]) {
+        // Se não estivermos arrastando o thumb, ignoramos completamente
+        return;
+      }
+
+      const rangeStart = document.getElementById(`rangeStart_${day}`);
+      const rangeEnd   = document.getElementById(`rangeEnd_${day}`);
+      const labelRange = document.getElementById(`labelRange_${day}`);
+
+      let startVal = parseInt(rangeStart.value);
+      let endVal   = parseInt(rangeEnd.value);
+
+      if (which === "start" && startVal > endVal) {
+        startVal = endVal;
+        rangeStart.value = startVal;
+      }
+      if (which === "end" && endVal < startVal) {
+        endVal = startVal;
+        rangeEnd.value = endVal;
+      }
+
+      labelRange.textContent = `
+        ${formatHourLabel(startVal)} - ${formatHourLabel(endVal)}
+      `;
+      updateSliderRange(day);
+    }
+
+    function updateSliderRange(day) {
+      const rangeStart = document.getElementById(`rangeStart_${day}`);
+      const rangeEnd   = document.getElementById(`rangeEnd_${day}`);
+      const sliderRange= document.getElementById(`sliderRange_${day}`);
+      const track      = document.querySelector(`#sliderContainer_${day} .slider-track`);
+      const trackRect  = track.getBoundingClientRect();
+      const trackWidth = trackRect.width;
+
+      const startVal = parseInt(rangeStart.value);
+      const endVal   = parseInt(rangeEnd.value);
+
+      const fracStart = startVal / 24;
+      const fracEnd   = endVal   / 24;
+
+      const leftPx  = fracStart * trackWidth;
+      const rightPx = fracEnd   * trackWidth;
+
+      sliderRange.style.left  = `${leftPx}px`;
+      sliderRange.style.width = `${rightPx - leftPx}px`;
+    }
+
+    function toggleDay(day) {
+      const enabled    = document.getElementById(`chk_${day}`).checked;
+      const rangeStart = document.getElementById(`rangeStart_${day}`);
+      const rangeEnd   = document.getElementById(`rangeEnd_${day}`);
+      const sliderTrack= document.querySelector(`#sliderContainer_${day} .slider-track`);
+      const sliderRange= document.getElementById(`sliderRange_${day}`);
+      const labelRange = document.getElementById(`labelRange_${day}`);
+
+      rangeStart.disabled = !enabled;
+      rangeEnd.disabled   = !enabled;
+
+      const op = enabled ? "1" : "0.3";
+      rangeStart.style.opacity = op;
+      rangeEnd.style.opacity   = op;
+      sliderTrack.style.opacity= op;
+      sliderRange.style.opacity= op;
+      labelRange.style.opacity = op;
+    }
+
+    document.getElementById("saveBtn").addEventListener("click", () => {
+      const payload = {};
+      daysOfWeek.forEach(day => {
+        const enabled   = document.getElementById(`chk_${day}`).checked;
+        const startVal  = parseInt(document.getElementById(`rangeStart_${day}`).value);
+        const endVal    = parseInt(document.getElementById(`rangeEnd_${day}`).value);
+        payload[day] = {
+          enabled: enabled,
+          start:   startVal,
+          end:     endVal
+        };
+      });
+
+      fetch("/filters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(resp => resp.json())
+      .then(data => {
+        if (data.success) {
+          alert("Filtros salvos com sucesso!");
+          window.location.href = "/";
+        } else {
+          alert("Erro ao salvar: " + (data.error || "desconhecido"));
+        }
+      })
+      .catch(err => {
+        console.error("Erro ao enviar filtros:", err);
+        alert("Falha ao salvar filtros.");
+      });
+    });
+  </script>
+
+  <!-- Injeção das configurações salvas via Jinja2 -->
+  <script>
+    window.preSavedFilters = {
+      {% for day, data in filters.items() %}
+      "{{ day }}": {
+        "enabled": {{ data.enabled | lower }},
+        "start":   {{ data.start }},
+        "end":     {{ data.end }}
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    };
+  </script>
+</body>
+</html>
