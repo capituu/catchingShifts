@@ -1,0 +1,5 @@
+pyppeteer==1.0.2
+pyppeteer-stealth==1.1.0
+requests==2.31.0
+tzdata==2024.1
+Flask==2.2.5

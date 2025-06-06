@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Collected Shifts</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 12px 8px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background-color: #2563eb;
+      color: white;
+    }
+    tbody tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+    .no-data {
+      font-size: 18px;
+      color: #666;
+      margin-top: 40px;
+      text-align: center;
+    }
+    .back-link {
+      margin-top: 20px;
+      display: inline-block;
+      text-decoration: none;
+      color: #2563eb;
+      padding: 8px 16px;
+      border: 1px solid #2563eb;
+      border-radius: 4px;
+    }
+    .back-link:hover {
+      background-color: #2563eb;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>Shifts Coletados</h1>
+
+  {% if not collected %}
+    <div class="no-data">
+      Nenhum shift foi coletado até o momento.
+    </div>
+  {% else %}
+    <table>
+      <thead>
+        <tr>
+          <th>Data/Hora da Coleta</th>
+          <th>Início do Shift</th>
+          <th>Fim do Shift</th>
+          <th>Shift ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in collected %}
+          <tr>
+            <td>{{ item.collected_at_str }}</td>
+            <td>{{ item.shift_start_str }}</td>
+            <td>{{ item.shift_end_str }}</td>
+            <td>{{ item.id }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  <a href="{{ url_for('index') }}" class="back-link">← Voltar</a>
+</body>
+</html>

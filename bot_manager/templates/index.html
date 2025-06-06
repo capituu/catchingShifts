@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gerenciador do Robo de Shifts</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 80px;
+    }
+    h1 {
+      margin-bottom: 30px;
+    }
+    .toggle-button {
+      width: 200px;
+      height: 60px;
+      font-size: 24px;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      outline: none;
+      transition: background-color 0.3s;
+      margin-bottom: 20px;
+    }
+    .toggle-on {
+      background-color: #28a745; /* verde */
+    }
+    .toggle-off {
+      background-color: #dc3545; /* vermelho */
+    }
+    #status {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    /* Classe unificada para nossos botões de navegação (Connect / Filters / Collected) */
+    .nav-button {
+      width: 200px;
+      height: 50px;
+      font-size: 20px;
+      color: white;
+      background-color: #007bff; /* azul */
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      outline: none;
+      transition: background-color 0.3s;
+      margin-bottom: 20px;
+    }
+    .nav-button:hover {
+      background-color: #0069d9;
+    }
+
+    .bottom-nav {
+      margin-top: 30px;
+      text-align: center;
+    }
+    .bottom-nav a {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #2563eb;
+      color: white;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 500;
+      margin: 0 8px;
+    }
+    .bottom-nav a:hover {
+      background-color: #1e40af;
+    }
+  </style>
+</head>
+<body>
+  <h1>Robo de Shifts (SkipTheDishes)</h1>
+
+  <!-- Botão ON/OFF -->
+  <button id="toggleBtn" class="toggle-button toggle-off">
+    OFF
+  </button>
+
+  <!-- Exibe o status atual do servidor -->
+  <div id="status">Status: Desligado</div>
+
+  <!-- Botão “Connect JE Account” -->
+  <button id="connectBtn" class="nav-button">
+    Connect JE Account
+  </button>
+
+  <!-- Botão “Filters” (reaproveita a mesma classe CSS) -->
+  <button id="filtersBtn" class="nav-button">
+    Filters
+  </button>
+
+  <div class="bottom-nav">
+    <a href="{{ url_for('collected_shifts') }}">Collected Shifts</a>
+  </div>
+
+  <script>
+    // 1) Ao carregar a página, obtém o estado do bot e pinta o botão adequadamente
+    document.addEventListener("DOMContentLoaded", () => {
+      fetch("/state")
+        .then(resp => resp.json())
+        .then(data => {
+          updateButton(data.running);
+        })
+        .catch(err => console.error("Erro ao obter estado:", err));
+    });
+
+    // 2) Atualiza botão ON/OFF e texto
+    function updateButton(isOn) {
+      const btn = document.getElementById("toggleBtn");
+      const status = document.getElementById("status");
+
+      if (isOn) {
+        btn.textContent = "ON";
+        btn.classList.remove("toggle-off");
+        btn.classList.add("toggle-on");
+        status.textContent = "Status: Ligado (checando a cada 30–60 seg)";
+      } else {
+        btn.textContent = "OFF";
+        btn.classList.remove("toggle-on");
+        btn.classList.add("toggle-off");
+        status.textContent = "Status: Desligado";
+      }
+    }
+
+    // 3) Ao clicar em ON/OFF, chama /toggle e troca o estado
+    document.getElementById("toggleBtn").addEventListener("click", () => {
+      fetch("/toggle", { method: "POST" })
+        .then(resp => resp.json())
+        .then(data => {
+          updateButton(data.running);
+        })
+        .catch(err => console.error("Erro ao alternar estado:", err));
+    });
+
+    // 4) Ao clicar em “Connect JE Account”, redireciona para /connect (login Keycloak/JE)
+    document.getElementById("connectBtn").addEventListener("click", () => {
+      window.open("/connect", "_blank", "width=500,height=700");
+    });
+
+    // 5) Ao clicar em “Filters”, redireciona para /filters
+    document.getElementById("filtersBtn").addEventListener("click", () => {
+      window.location.href = "/filters";
+    });
+  </script>
+</body>
+</html>
