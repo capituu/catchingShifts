@@ -1,13 +1,13 @@
 import os
 
 # ────────────────────────────────────────────────────────────────────────────────
-# Definimos BASE_DIR como a pasta "catchingShifts" (uma pasta acima de bot_manager)
+# Definimos BASE_DIR como a pasta “catchingShifts” (uma pasta acima de bot_manager)
 # ────────────────────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), os.pardir)
 )
 
-# Pasta "userauth" fica diretamente em BASE_DIR:
+# Pasta “userauth” fica diretamente em BASE_DIR:
 AUTH_DIR = os.path.join(BASE_DIR, "userauth")
 
 LAST_USER_FILE = os.path.join(AUTH_DIR, "last_user.txt")

@@ -1,3 +1,4 @@
+
 import sys
 import uuid
 import json
@@ -8,7 +9,6 @@ import time
 import random
 import requests
 import os
-    
 from flask import Flask, render_template, jsonify, request, redirect
 from urllib.parse import urlencode
 from datetime import datetime, timezone
@@ -49,16 +49,17 @@ KEYCLOAK_TOKEN_URL = os.getenv(
     "https://api-produk.skipthedishes.com/auth/realms/Courier/protocol/openid-connect/token"
 )
 CLIENT_ID          = os.getenv("CLIENT_ID", "courier_mobile_jet_uk")
-REDIRECT_URI       = os.getenv("REDIRECT_URI", "courierapp://homepage")
+REDIRECT_URI       = os.getenv("REDIRECT_URI", "http://localhost:5000/callback")
 
 # ────────────────────────────────────────────────────────────────────────────────
-# 4) Configuração do Flask, apontando para templates em bot_manager/templates
+# 4) Configuração do Flask, definindo onde estão templates e estáticos
 # ────────────────────────────────────────────────────────────────────────────────
-script_dir = os.path.dirname(os.path.abspath(__file__))  # catchingShifts/bot_manager
+# Agora assumimos que a pasta 'templates/' e 'static/' estão em catchingShifts/, um nível acima de bot_manager/.
+base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 app = Flask(
     __name__,
-    template_folder=os.path.join(script_dir, "templates"),
-    static_folder=os.path.join(script_dir, "static")
+    template_folder=os.path.join(base_dir, "templates"),
+    static_folder=os.path.join(base_dir, "static")
 )
 
 bot_running = False
@@ -67,7 +68,7 @@ bot_lock = Lock()
 INTERVAL_SECONDS_MIN = 30
 INTERVAL_SECONDS_MAX = 60
 
-# Armazena states válidos para o fluxo OAuth
+# Conjunto em memória para validar 'state' no OAuth
 OAUTH_STATES = set()
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -119,10 +120,12 @@ def run_shifts_loop():
 
         try:
             env = os.environ.copy()
+            # Garante que PUPPETEER_EXECUTABLE_PATH esteja em env
             chrome_env = os.environ.get("PUPPETEER_EXECUTABLE_PATH")
             if chrome_env:
                 env["PUPPETEER_EXECUTABLE_PATH"] = chrome_env
 
+            # Executa get_shifts_puppeteer.py dentro de catchingShifts/bot_manager
             script_dir = os.path.dirname(os.path.abspath(__file__))
             result = subprocess.run(
                 [sys.executable, "get_shifts_puppeteer.py"],
@@ -167,6 +170,7 @@ def toggle():
     global bot_running, bot_thread
     with bot_lock:
         if not bot_running:
+            # Valida Chromium apenas ao ligar
             if not launch_chromium_process():
                 return jsonify({"running": False, "error": "Falha na verificação do Chromium"}), 400
             bot_running = True
@@ -210,6 +214,7 @@ def callback():
     if not code:
         return "❌ Parâmetro 'code' não retornado pelo Keycloak.", 400
 
+    # Validação de state para prevenir CSRF
     if state not in OAUTH_STATES:
         logging.warning(f"State inválido recebido: {state}")
         return "❌ Estado inválido.", 400
@@ -260,12 +265,8 @@ def callback():
         logging.error(f"Erro ao salvar token_file: {e}")
         return "❌ Erro ao salvar tokens.", 500
 
-     # depois de salvar token_file e save_last_user_id(user_id)
     save_last_user_id(user_id)
-
-    # Em vez de redirect, renderizamos callback.html que fecha o popup
-    return render_template("callback.html")
-
+    return redirect("/")
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 10) Rota de Filters (GET = exibe formulário, POST = salva JSON validado)
@@ -377,5 +378,7 @@ def collected_shifts():
 # 12) Execução do Flask
 # ────────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
+    # Força o Flask a rodar em modo DEBUG
     print("▶ Iniciando Flask em http://127.0.0.1:5000/  (modo debug=on)")
     app.run(host="0.0.0.0", port=5000, debug=True)
+
