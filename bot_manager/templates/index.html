@@ -102,14 +102,19 @@
   </div>
 
   <script>
-    // 1) Ao carregar a página, obtém o estado do bot e pinta o botão adequadamente
-    document.addEventListener("DOMContentLoaded", () => {
-      fetch("/state")
-        .then(resp => resp.json())
-        .then(data => {
-          updateButton(data.running);
-        })
-        .catch(err => console.error("Erro ao obter estado:", err));
+    // 1) Ao carregar a página, obtém o estado do bot e o status de autenticação
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        const stateResp = await fetch("{{ url_for('state') }}");
+        const stateData = await stateResp.json();
+        updateButton(stateData.running);
+
+        // Verifica se já existe usuário autenticado
+        const authResp = await fetch("{{ url_for('auth_status') }}");
+        await authResp.json();
+      } catch (err) {
+        console.error("Erro ao obter informações iniciais:", err);
+      }
     });
 
     // 2) Atualiza botão ON/OFF e texto
