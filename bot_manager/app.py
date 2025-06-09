@@ -62,6 +62,17 @@ app = Flask(
     static_folder=os.path.join(base_dir, "static")
 )
 
+# Ajuda a depurar problemas de "TemplateNotFound" verificando se o arquivo
+# realmente existe onde esperamos. Assim o usuário recebe um erro mais
+# descritivo caso esteja executando uma versão antiga ou de maneira incorreta.
+expected_index = os.path.join(app.template_folder, "index.html")
+if not os.path.exists(expected_index):
+    raise RuntimeError(
+        f"Arquivo de template não encontrado: {expected_index}. "
+        "Certifique-se de que clonou o repositório completo e de que "
+        "executa a versão mais recente do aplicativo."
+    )
+
 bot_running = False
 bot_thread = None
 bot_lock = Lock()
