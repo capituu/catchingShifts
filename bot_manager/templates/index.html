@@ -110,7 +110,9 @@
         updateButton(stateData.running);
 
         // Verifica se já existe usuário autenticado
-        const authResp = await fetch("{{ url_for('auth_status') }}");
+        // Usamos a rota literal para evitar erros caso o Flask
+        // nao registre corretamente a funcao `auth_status` em algumas instalacoes
+        const authResp = await fetch("/auth_status");
         await authResp.json();
       } catch (err) {
         console.error("Erro ao obter informações iniciais:", err);
