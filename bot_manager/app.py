@@ -49,7 +49,9 @@ KEYCLOAK_TOKEN_URL = os.getenv(
     "https://api-produk.skipthedishes.com/auth/realms/Courier/protocol/openid-connect/token"
 )
 CLIENT_ID          = os.getenv("CLIENT_ID", "courier_mobile_jet_uk")
-REDIRECT_URI       = os.getenv("REDIRECT_URI", "http://localhost:5000/callback")
+# Default redirect URI matches the official mobile app so the login page
+# is served without Keycloak rejecting our request.
+REDIRECT_URI       = os.getenv("REDIRECT_URI", "courierapp://homepage")
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 4) Configuração do Flask, definindo onde estão templates e estáticos
@@ -194,7 +196,9 @@ def connect():
         "redirect_uri":  REDIRECT_URI,
         "response_type": "code",
         "scope":         "openid profile email offline_access",
-        "response_mode": "query",
+        # Use fragment to match the mobile app flow and allow interception of
+        # the authorization code from the "courierapp://" redirect.
+        "response_mode": "fragment",
         "state":         state,
         "prompt":        "login"
     }
