@@ -54,13 +54,24 @@ REDIRECT_URI       = os.getenv("REDIRECT_URI", "http://localhost:5000/callback")
 # ────────────────────────────────────────────────────────────────────────────────
 # 4) Configuração do Flask, definindo onde estão templates e estáticos
 # ────────────────────────────────────────────────────────────────────────────────
-# Agora assumimos que a pasta 'templates/' e 'static/' estão em catchingShifts/, um nível acima de bot_manager/.
-base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+# As pastas `templates/` e `static/` ficam dentro do próprio `bot_manager`.
+base_dir = os.path.dirname(os.path.abspath(__file__))
 app = Flask(
     __name__,
     template_folder=os.path.join(base_dir, "templates"),
     static_folder=os.path.join(base_dir, "static")
 )
+
+# Ajuda a depurar problemas de "TemplateNotFound" verificando se o arquivo
+# realmente existe onde esperamos. Assim o usuário recebe um erro mais
+# descritivo caso esteja executando uma versão antiga ou de maneira incorreta.
+expected_index = os.path.join(app.template_folder, "index.html")
+if not os.path.exists(expected_index):
+    raise RuntimeError(
+        f"Arquivo de template não encontrado: {expected_index}. "
+        "Certifique-se de que clonou o repositório completo e de que "
+        "executa a versão mais recente do aplicativo."
+    )
 
 bot_running = False
 bot_thread = None
@@ -164,6 +175,15 @@ def index():
 @app.route("/state")
 def state():
     return jsonify({"running": bot_running}), 200
+
+# Rota simples para verificar se existe algum usuário autenticado
+@app.route("/auth_status")
+def auth_status():
+    user_id = get_last_user_id()
+    if not user_id:
+        return jsonify({"authenticated": False}), 200
+    token_file = os.path.join(AUTH_DIR, f"tokens_user_{user_id}.json")
+    return jsonify({"authenticated": os.path.exists(token_file)}), 200
 
 @app.route("/toggle", methods=["POST"])
 def toggle():
