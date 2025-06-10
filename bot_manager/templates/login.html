@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login Just Eat</title>
+</head>
+<body>
+  <p>Uma janela do Chrome foi aberta para o login. Conclua a autenticação nela.</p>
+  <p>Esta janela será fechada automaticamente quando o processo terminar.</p>
+  <script>
+    async function checkStatus() {
+      const resp = await fetch('/login-status');
+      const data = await resp.json();
+      if (data.complete) {
+        if (window.opener) window.opener.location.reload();
+        window.close();
+      } else {
+        setTimeout(checkStatus, 1000);
+      }
+    }
+    checkStatus();
+  </script>
+</body>
+</html>
