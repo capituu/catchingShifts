@@ -257,8 +257,13 @@ def confirm_shift(shift_id: str):
 # ────────────────────────────────────────────────────────────────────────────────
 # 8) Função assíncrona que busca shifts, filtra e confirma
 # ────────────────────────────────────────────────────────────────────────────────
-CHROME_PATH = r"C:\Users\gusta\OneDrive\Desktop\chrome-win\chrome.exe"
-os.environ['PUPPETEER_EXECUTABLE_PATH'] = CHROME_PATH
+# Determine Chrome/Chromium path from environment or use a common default
+CHROME_PATH = os.environ.get(
+    "PUPPETEER_EXECUTABLE_PATH",
+    r"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+)
+# Propagate path so pyppeteer picks it up
+os.environ["PUPPETEER_EXECUTABLE_PATH"] = CHROME_PATH
 
 IPHONE_VIEWPORT = {
     "width": 375,
