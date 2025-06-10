@@ -11,10 +11,16 @@ from pyppeteer.connection import Connection  # Add this import
 from pyppeteer_stealth import stealth
 from config import save_last_user_id, AUTH_DIR
 
-CHROME_PATH = r"C:\Users\gusta\OneDrive\Desktop\chrome-win\chrome.exe"
+# Read Chrome/Chromium executable path from environment. This allows the
+# script to run on different systems without hard-coding a location.
+CHROME_PATH = os.environ.get("PUPPETEER_EXECUTABLE_PATH")
 
 def verify_chrome_path():
     """Verify Chrome executable exists and is runnable"""
+    if not CHROME_PATH:
+        print("❌ Environment variable 'PUPPETEER_EXECUTABLE_PATH' is not set")
+        return False
+
     if not os.path.exists(CHROME_PATH):
         print(f"❌ Chrome not found at: {CHROME_PATH}")
         return False
