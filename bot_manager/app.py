@@ -54,8 +54,8 @@ REDIRECT_URI       = os.getenv("REDIRECT_URI", "http://localhost:5000/callback")
 # ────────────────────────────────────────────────────────────────────────────────
 # 4) Configuração do Flask, definindo onde estão templates e estáticos
 # ────────────────────────────────────────────────────────────────────────────────
-# Agora assumimos que a pasta 'templates/' e 'static/' estão em catchingShifts/, um nível acima de bot_manager/.
-base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+# As pastas de templates e arquivos estáticos ficam dentro de bot_manager/
+base_dir = os.path.dirname(os.path.abspath(__file__))
 app = Flask(
     __name__,
     template_folder=os.path.join(base_dir, "templates"),
