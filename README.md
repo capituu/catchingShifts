@@ -8,6 +8,10 @@ SkipTheDishes API and automatically fetch or confirm courier shifts.
 - Python 3.11+
 - Google Chrome or Chromium installed.
 - `PUPPETEER_EXECUTABLE_PATH` environment variable pointing to the Chrome executable.
+  Example values:
+  - Windows: `C:\Program Files\Google\Chrome\Application\chrome.exe`
+  - Linux: `/usr/bin/chromium-browser` or `/usr/bin/google-chrome`
+  You can verify the path by running `chrome --version` or `chromium-browser --version`.
 
 Install dependencies with:
 
@@ -31,6 +35,9 @@ mimic the official mobile app using the `courierapp://homepage` redirect URI.
 After you finish logging in, the window closes automatically. If necessary, you
 can override the redirect using the `REDIRECT_URI` environment variable.
 Tokens are stored in `userauth/`.
+The login window stays open until the authentication code is captured or a
+timeout occurs. You can change the timeout (default 180 seconds) using the
+`LOGIN_TIMEOUT_SECONDS` environment variable.
 Use the **Connect** button to authenticate. By default the login flow mimics
 the official mobile app and uses the `courierapp://homepage` redirect URI.
 If necessary, you can override this with the `REDIRECT_URI` environment

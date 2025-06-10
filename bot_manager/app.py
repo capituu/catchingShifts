@@ -79,6 +79,8 @@ OAUTH_STATES = set()
 login_lock = Lock()
 login_in_progress = False
 login_completed = False
+# Timeout (seconds) for the automated login flow
+LOGIN_TIMEOUT = int(os.getenv("LOGIN_TIMEOUT_SECONDS", "180"))
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 5) Função para verificar se o executável do Chromium existe e responde
@@ -232,23 +234,35 @@ async def run_login_browser(state: str) -> tuple[str, str] | None:
     page.on("response", lambda resp: asyncio.ensure_future(handle_response(resp)))
     await page.goto(login_url, {"waitUntil": "networkidle2"})
 
+    start_time = time.time()
     while "code" not in captured:
+        if time.time() - start_time > LOGIN_TIMEOUT:
+            logging.error(
+                f"Tempo limite de {LOGIN_TIMEOUT}s excedido aguardando código de autenticação"
+            )
+            await browser.close()
+            return None
         await asyncio.sleep(0.5)
 
+    logging.info("Código de autenticação capturado com sucesso")
     return captured.get("code"), captured.get("session_state")
 
 def start_login_flow(state: str):
     global login_in_progress, login_completed
     try:
+        logging.info(f"Iniciando fluxo de login para state={state}")
         result = asyncio.run(run_login_browser(state))
         if result is None:
+            logging.error("Fluxo de login falhou ou expirou")
             return
         code, session_state = result
+        logging.info("Enviando código capturado para /callback")
         requests.get(
             "http://127.0.0.1:5000/callback",
             params={"code": code, "state": state, "session_state": session_state},
         )
         login_completed = True
+        logging.info("Login concluído com sucesso")
     except Exception as e:
         logging.error(f"Erro no fluxo de login: {e}")
     finally:
@@ -289,6 +303,7 @@ def toggle():
 def connect():
     global login_in_progress, login_completed
     state = uuid.uuid4().hex
+            logging.info(f"Thread de login iniciada para state={state}")
     OAUTH_STATES.add(state)
     params = {
         "client_id":     CLIENT_ID,
