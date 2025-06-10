@@ -289,17 +289,21 @@ def toggle():
 def connect():
     global login_in_progress, login_completed
     state = uuid.uuid4().hex
-    with login_lock:
-        if not login_in_progress:
-            login_in_progress = True
-            login_completed = False
-            OAUTH_STATES.add(state)
-            threading.Thread(target=start_login_flow, args=(state,), daemon=True).start()
-    return render_template("login.html")
-
-@app.route("/login-status")
-def login_status():
-    return jsonify({"in_progress": login_in_progress, "complete": login_completed})
+    OAUTH_STATES.add(state)
+    params = {
+        "client_id":     CLIENT_ID,
+        "redirect_uri":  REDIRECT_URI,
+        "response_type": "code",
+        "scope":         "openid profile email offline_access",
+        # Use fragment to match the mobile app flow and allow interception of
+        # the authorization code from the "courierapp://" redirect.
+        "response_mode": "fragment",
+        "state":         state,
+        "prompt":        "login"
+    }
+    url = KEYCLOAK_AUTH_URL + "?" + urlencode(params)
+    logging.info(f"Redirecionando para Keycloak: state={state}")
+    return redirect(url)
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 9) Callback: recebe 'code' do Keycloak e troca por tokens
