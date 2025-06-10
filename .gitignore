@@ -1,0 +1,12 @@
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# User-specific auth data and logs
+userauth/
+chrome-data/
+*.log
+
+# Local screenshots and debug images
+*.png

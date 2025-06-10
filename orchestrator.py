@@ -17,7 +17,7 @@ def main():
     run_script("auth_code_capture.py")
     
     # Step 2: Exchange tokens
-    run_script("exchange_tokens.py")
+    run_script("token_exchange.py")
     
     print("🎉 All steps completed. Tokens saved.")
 

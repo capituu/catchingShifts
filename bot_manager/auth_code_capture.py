@@ -11,7 +11,12 @@ from pyppeteer.connection import Connection  # Add this import
 from pyppeteer_stealth import stealth
 from config import save_last_user_id, AUTH_DIR
 
-CHROME_PATH = r"C:\Users\gusta\OneDrive\Desktop\chrome-win\chrome.exe"
+# Chrome/Chromium executable path. Use environment variable if provided,
+# falling back to a common Windows installation path.
+CHROME_PATH = os.environ.get(
+    "PUPPETEER_EXECUTABLE_PATH",
+    r"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+)
 
 def verify_chrome_path():
     """Verify Chrome executable exists and is runnable"""
@@ -94,6 +99,9 @@ async def run():
     if not await verify_browser_launch():
         print("❌ Aborting: Chrome launch test failed")
         return
+
+    # Expose the Chrome path for pyppeteer
+    os.environ["PUPPETEER_EXECUTABLE_PATH"] = CHROME_PATH
 
     print("\n=== Debug Information ===")
     print(f"Chrome Path: {CHROME_PATH}")
