@@ -9,6 +9,8 @@ import time
 import random
 import requests
 import os
+import asyncio
+import urllib.parse as urlparse
 from flask import Flask, render_template, jsonify, request, redirect
 from urllib.parse import urlencode
 from datetime import datetime, timezone
@@ -72,6 +74,13 @@ INTERVAL_SECONDS_MAX = 60
 
 # Conjunto em memória para validar 'state' no OAuth
 OAUTH_STATES = set()
+
+# Flags para gerenciar o fluxo de login automatizado via Pyppeteer
+login_lock = Lock()
+login_in_progress = False
+login_completed = False
+# Timeout (seconds) for the automated login flow
+LOGIN_TIMEOUT = int(os.getenv("LOGIN_TIMEOUT_SECONDS", "180"))
 
 # ────────────────────────────────────────────────────────────────────────────────
 # 5) Função para verificar se o executável do Chromium existe e responde
@@ -156,6 +165,109 @@ def run_shifts_loop():
                     return
             time.sleep(1)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 6b) Fluxo de login via Pyppeteer
+# ─────────────────────────────────────────────────────────────────────────────
+
+IPHONE_DEVICE = {
+    "name": "iPhone X",
+    "userAgent": (
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
+    ),
+    "viewport": {
+        "width": 375,
+        "height": 812,
+        "deviceScaleFactor": 3,
+        "isMobile": True,
+        "hasTouch": True,
+        "isLandscape": False,
+    },
+}
+
+async def run_login_browser(state: str) -> tuple[str, str] | None:
+    chrome_path = os.environ.get("PUPPETEER_EXECUTABLE_PATH")
+    if not chrome_path or not os.path.exists(chrome_path):
+        logging.error(f"Chromium não encontrado: {chrome_path}")
+        return None
+
+    from pyppeteer import launch
+    from pyppeteer_stealth import stealth
+
+    browser = await launch(
+        executablePath=chrome_path,
+        headless=False,
+        args=[
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-blink-features=AutomationControlled",
+        ],
+    )
+    page = await browser.newPage()
+    await page.setUserAgent(IPHONE_DEVICE["userAgent"])
+    await page.setViewport(IPHONE_DEVICE["viewport"])
+    await stealth(page)
+
+    params = {
+        "client_id": CLIENT_ID,
+        "redirect_uri": REDIRECT_URI,
+        "response_type": "code",
+        "scope": "openid profile email offline_access",
+        "response_mode": "fragment",
+        "state": state,
+        "prompt": "login",
+    }
+    login_url = KEYCLOAK_AUTH_URL + "?" + urlencode(params)
+
+    captured: dict[str, str] = {}
+
+    async def handle_response(resp):
+        if resp.status == 302:
+            loc = resp.headers.get("location", "")
+            if loc.startswith("courierapp://"):
+                parsed = urlparse.urlparse(loc)
+                fragment = urlparse.parse_qs(parsed.fragment)
+                captured["code"] = fragment.get("code", [""])[0]
+                captured["session_state"] = fragment.get("session_state", [""])[0]
+                await browser.close()
+
+    page.on("response", lambda resp: asyncio.ensure_future(handle_response(resp)))
+    await page.goto(login_url, {"waitUntil": "networkidle2"})
+
+    start_time = time.time()
+    while "code" not in captured:
+        if time.time() - start_time > LOGIN_TIMEOUT:
+            logging.error(
+                f"Tempo limite de {LOGIN_TIMEOUT}s excedido aguardando código de autenticação"
+            )
+            await browser.close()
+            return None
+        await asyncio.sleep(0.5)
+
+    logging.info("Código de autenticação capturado com sucesso")
+    return captured.get("code"), captured.get("session_state")
+
+def start_login_flow(state: str):
+    global login_in_progress, login_completed
+    try:
+        logging.info(f"Iniciando fluxo de login para state={state}")
+        result = asyncio.run(run_login_browser(state))
+        if result is None:
+            logging.error("Fluxo de login falhou ou expirou")
+            return
+        code, session_state = result
+        logging.info("Enviando código capturado para /callback")
+        requests.get(
+            "http://127.0.0.1:5000/callback",
+            params={"code": code, "state": state, "session_state": session_state},
+        )
+        login_completed = True
+        logging.info("Login concluído com sucesso")
+    except Exception as e:
+        logging.error(f"Erro no fluxo de login: {e}")
+    finally:
+        login_in_progress = False
+
 # ────────────────────────────────────────────────────────────────────────────────
 # 7) Rotas do Flask: página principal, estado e toggle do bot
 # ────────────────────────────────────────────────────────────────────────────────
@@ -189,7 +301,9 @@ def toggle():
 # ────────────────────────────────────────────────────────────────────────────────
 @app.route("/connect")
 def connect():
+    global login_in_progress, login_completed
     state = uuid.uuid4().hex
+            logging.info(f"Thread de login iniciada para state={state}")
     OAUTH_STATES.add(state)
     params = {
         "client_id":     CLIENT_ID,
